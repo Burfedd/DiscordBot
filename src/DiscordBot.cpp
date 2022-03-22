@@ -10,7 +10,7 @@ int main()
 		std::getline(file, botToken);
 	}
 	file.close();
-	if (botToken == "") {
+	if (botToken == "Paste_your_token_here") {
 		std::cout << "You didn't specify the bot token! Aborting..." << std::endl;
 		return 0;
 	}
