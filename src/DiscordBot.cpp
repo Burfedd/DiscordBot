@@ -5,6 +5,7 @@
 int main()
 {
 	std::string botToken;
+	const dpp::snowflake GUILD_ID = 889928376666710037;
 	std::ifstream file("../token.txt");
 	if (file.is_open()) {
 		std::getline(file, botToken);
@@ -15,6 +16,19 @@ int main()
 		return 0;
 	}
 
-	std::cout << "Bot token: " << botToken << std::endl;
-	return 0;
+	dpp::cluster bot(botToken);
+
+	bot.on_interaction_create([](const dpp::interaction_create_t& event) {
+		if (event.command.get_command_name() == "ping") {
+			event.reply("Pong!");
+		}
+	});
+
+	bot.on_ready([&bot](const dpp::ready_t& event) {
+		if (dpp::run_once<struct register_bot_commands>()) {
+			bot.guild_command_create(dpp::slashcommand("ping", "Ping Pong!", bot.me.id), GUILD_ID);
+		}
+	});
+
+	bot.start(false);
 }
