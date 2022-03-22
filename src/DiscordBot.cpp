@@ -16,9 +16,9 @@ int main()
 		std::cout << "You didn't specify the bot token! Aborting..." << std::endl;
 		return 0;
 	}
-	
-	const std::string token = botToken;
-	dpp::cluster bot(token);
+
+	dpp::cluster bot(botToken);
+	bot.on_log(dpp::utility::cout_logger());
 
 	bot.on_interaction_create([](const dpp::interaction_create_t& event) {
 		if (event.command.get_command_name() == "ping") {
