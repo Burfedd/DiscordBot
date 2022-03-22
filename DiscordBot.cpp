@@ -1,12 +1,8 @@
-﻿// DiscordBot.cpp : Defines the entry point for the application.
-//
-
-#include "DiscordBot.h"
-
-using namespace std;
+﻿#include "DiscordBot.h"
+#include <iostream>
 
 int main()
 {
-	cout << "Hello CMake." << endl;
+	std::cout << "Hello CMake." << std::endl;
 	return 0;
 }
