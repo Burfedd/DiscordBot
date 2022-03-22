@@ -2,10 +2,11 @@
 #include <iostream>
 #include <dpp/dpp.h>
 
+const dpp::snowflake GUILD_ID = 889928376666710037;
+
 int main()
 {
 	std::string botToken;
-	const dpp::snowflake GUILD_ID = 889928376666710037;
 	std::ifstream file("../token.txt");
 	if (file.is_open()) {
 		std::getline(file, botToken);
@@ -15,8 +16,9 @@ int main()
 		std::cout << "You didn't specify the bot token! Aborting..." << std::endl;
 		return 0;
 	}
-
-	dpp::cluster bot(botToken);
+	
+	const std::string token = botToken;
+	dpp::cluster bot(token);
 
 	bot.on_interaction_create([](const dpp::interaction_create_t& event) {
 		if (event.command.get_command_name() == "ping") {
