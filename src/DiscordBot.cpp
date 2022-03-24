@@ -89,6 +89,48 @@ int main()
 			event.from->disconnect_voice(event.command.guild_id);
 			event.reply("Disconnected from a voice channel");
 		}
+
+		if (cmd == "stream") {
+			MODE_RECORD = false;
+			user_id = event.command.usr.id;
+			std::string name = "recording";		// default recording filename
+			dpp::snowflake author;
+			if (std::holds_alternative<std::string>(event.get_parameter("name"))) {
+				name = std::get<std::string>(event.get_parameter("name"));
+			}
+			if (std::holds_alternative<dpp::snowflake>(event.get_parameter("author"))) {
+				author = std::get<dpp::snowflake>(event.get_parameter("author"));
+			}
+
+			if (std::filesystem::exists("saved_vc/" + std::to_string(author) + "/" + name + ".pcm")) {
+				std::string fullpath = "./saved_vc/" + std::to_string(author) + "/" + name + ".pcm";
+				dpp::guild* g = dpp::find_guild(event.command.guild_id);
+				if (!g->connect_member_voice(user_id, false, true)) {
+					bot.message_create(dpp::message(event.command.channel_id, "User must be on a voice channel"));
+					return;
+				}
+				dpp::voiceconn* v = event.from->get_voice(event.command.guild_id);
+				v->connect(event.command.guild_id);
+				if (v && v->voiceclient && v->voiceclient->is_ready()) {
+					uint8_t* source = nullptr;
+					size_t source_size = 0;
+					std::cout << fullpath;
+					std::ifstream input(fullpath, std::ios::in | std::ios::binary | std::ios::ate);
+					std::cout << input.is_open();
+					if (input.is_open()) {
+						source_size = input.tellg();
+						source = new uint8_t[source_size];
+						input.seekg(0, std::ios::beg);
+						input.read((char*)source, source_size);
+						input.close();
+					}
+					v->voiceclient->send_audio_raw((uint16_t*)source, source_size);
+					event.from->disconnect_voice(event.command.guild_id);
+				}
+			} else {
+				event.reply("Specified voice recording from specified author does not exist");
+			}
+		}
 	});
 
 	bot.on_voice_receive([&bot, &f, &user_id, &MODE_RECORD](const dpp::voice_receive_t& event) {
@@ -113,6 +155,11 @@ int main()
 
 			dpp::slashcommand vc_stop_cmd("stop", "Stop recording", bot.me.id);
 			bot.guild_command_create(vc_stop_cmd, GUILD_ID);
+
+			dpp::slashcommand vc_stream_cmd("stream", "Stream other user's recorded voice message", bot.me.id);
+			vc_stream_cmd.add_option(dpp::command_option(dpp::co_user, "author", "Author", false));
+			vc_stream_cmd.add_option(dpp::command_option(dpp::co_string, "name", "Recording name", false));
+			bot.guild_command_create(vc_stream_cmd, GUILD_ID);
 		}
 	});
 
