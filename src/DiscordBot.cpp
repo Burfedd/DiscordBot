@@ -73,7 +73,7 @@ int main()
 			}
 			event.reply("Connected to the voice channel, started recording: \"" + name + "\"");
 
-			dpp::oneshot_timer(&bot, duration, [&event, &f, &MODE_RECORD](){
+			new dpp::oneshot_timer(&bot, duration, [&event, &f, &MODE_RECORD](){
 				MODE_RECORD = false;
 				fclose(f);
 				event.from->disconnect_voice(event.command.guild_id);
