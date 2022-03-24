@@ -15,14 +15,18 @@ int main()
 		return 0;
 	}
 
+	FILE* f;
+	dpp::snowflake user_id;
+	bool MODE_RECORD;
+
 	dpp::cluster bot(botToken);
 	bot.on_log(dpp::utility::cout_logger());
 
 
 
-	bot.on_interaction_create([&bot](const dpp::interaction_create_t& event) {
+	bot.on_interaction_create([&bot, &f, &user_id, &MODE_RECORD](const dpp::interaction_create_t& event) {
 		std::string cmd = event.command.get_command_name();
-
+		
 		if (cmd == "roll") {
 			int64_t lower = 0;
 			int64_t upper = 100;
@@ -39,6 +43,42 @@ int main()
 				event.reply("Upper boundary cannot be less or equal to lower boundary!");
 			}
 		}
+
+		if (cmd == "record") {
+			MODE_RECORD = true;
+			user_id = event.command.usr.id;
+			std::string name = "recording";		// default recording filename
+			int64_t duration = 3;				// default recording duration
+			if (std::holds_alternative<std::string>(event.get_parameter("name"))) {
+				name = std::get<std::string>(event.get_parameter("name"));
+			}
+			if (std::holds_alternative<int64_t>(event.get_parameter("duration"))) {
+				duration = std::get<int64_t>(event.get_parameter("duration"));
+			}
+
+			std::string path_userid = std::to_string(user_id);
+			if (!std::filesystem::exists("saved_vc" + path_userid)) {
+				std::filesystem::create_directories("saved_vc/" + path_userid);
+			}
+
+			std::string fullpath = "./saved_vc/" + path_userid + "/" + name + ".pcm";
+			f = fopen(fullpath.c_str(), "wb");
+
+			dpp::guild* g = dpp::find_guild(event.command.guild_id);
+			if (!g->connect_member_voice(user_id, true, false)) {
+				event.reply("User must be on a voice channel");
+				return;
+			}
+			event.reply("Connected to the voice channel, started recording: \"" + name + "\"");
+		}
+	});
+
+	bot.on_voice_receive([&bot, &f, &user_id, &MODE_RECORD](const dpp::voice_receive_t& event) {
+		if (MODE_RECORD) {
+			if (event.user_id == user_id) {
+				fwrite((char*)event.audio, 1, event.audio_size, f);
+			}
+		}
 	});
 
 	bot.on_ready([&bot](const dpp::ready_t& event) {
@@ -47,6 +87,11 @@ int main()
 			roll_cmd.add_option(dpp::command_option(dpp::co_integer, "lower", "Lower boundary", false));
 			roll_cmd.add_option(dpp::command_option(dpp::co_integer, "upper", "Upper boundary", false));
 			bot.guild_command_create(roll_cmd, GUILD_ID);
+
+			dpp::slashcommand vc_record_cmd("record", "Record you for a set amount of time and save the recorded .pcm", bot.me.id);
+			vc_record_cmd.add_option(dpp::command_option(dpp::co_integer, "duration", "Duration of the recording", false));
+			vc_record_cmd.add_option(dpp::command_option(dpp::co_string, "name", "Recording name", false));
+			bot.guild_command_create(vc_record_cmd, GUILD_ID);
 		}
 	});
 
