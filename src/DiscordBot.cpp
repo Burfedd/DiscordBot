@@ -53,7 +53,9 @@ int main()
 				name = std::get<std::string>(event.get_parameter("name"));
 			}
 			if (std::holds_alternative<int64_t>(event.get_parameter("duration"))) {
-				duration = std::get<int64_t>(event.get_parameter("duration"));
+				if (duration <= 10) {
+					duration = std::get<int64_t>(event.get_parameter("duration"));
+				}
 			}
 
 			std::string path_userid = std::to_string(user_id);
@@ -70,6 +72,13 @@ int main()
 				return;
 			}
 			event.reply("Connected to the voice channel, started recording: \"" + name + "\"");
+
+			new dpp::oneshot_timer(&bot, duration, [&event, &f, &MODE_RECORD](){
+				MODE_RECORD = false;
+				fclose(f);
+				event.from->disconnect_voice(event.command.guild_id);
+				event.reply("Disconnected from a voice channel");
+			});
 		}
 
 		if (cmd == "stop") {
