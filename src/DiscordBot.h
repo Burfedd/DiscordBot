@@ -4,5 +4,11 @@
 #pragma once
 
 #include <iostream>
+#include <random>
+#include <dpp/dpp.h>
+#include <dpp/fmt/format.h>
+
+int cmd_roll();
+int cmd_roll(int a, int b);
 
 // TODO: Reference additional headers your program requires here.
