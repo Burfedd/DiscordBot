@@ -71,6 +71,13 @@ int main()
 			}
 			event.reply("Connected to the voice channel, started recording: \"" + name + "\"");
 		}
+
+		if (cmd == "stop") {
+			fclose(f);
+			MODE_RECORD = false;
+			event.from->disconnect_voice(event.command.guild_id);
+			event.reply("Disconnected from a voice channel");
+		}
 	});
 
 	bot.on_voice_receive([&bot, &f, &user_id, &MODE_RECORD](const dpp::voice_receive_t& event) {
@@ -92,6 +99,9 @@ int main()
 			vc_record_cmd.add_option(dpp::command_option(dpp::co_integer, "duration", "Duration of the recording", false));
 			vc_record_cmd.add_option(dpp::command_option(dpp::co_string, "name", "Recording name", false));
 			bot.guild_command_create(vc_record_cmd, GUILD_ID);
+
+			dpp::slashcommand vc_stop_cmd("stop", "Stop recording", bot.me.id);
+			bot.guild_command_create(vc_stop_cmd, GUILD_ID);
 		}
 	});
 
