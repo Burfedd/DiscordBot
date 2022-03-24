@@ -23,24 +23,34 @@ int main()
 	bot.on_interaction_create([&bot](const dpp::interaction_create_t& event) {
 		std::string cmd = event.command.get_command_name();
 
-		if (cmd == "dice" || cmd == "roll") {
-			std::string result = std::to_string(cmd_roll());
-			event.reply("Rolling dice... Result: " + result);
+		if (cmd == "roll") {
+			int64_t lower = 0;
+			int64_t upper = 100;
+			if (std::holds_alternative<int64_t>(event.get_parameter("lower"))) {
+				lower = std::get<int64_t>(event.get_parameter("lower"));
+			}
+			if (std::holds_alternative<int64_t>(event.get_parameter("upper"))) {
+				upper = std::get<int64_t>(event.get_parameter("upper"));
+			}
+			if (lower < upper) {
+				std::string result = std::to_string(cmd_roll(lower, upper));
+				event.reply("Rolling [" + std::to_string(lower) + ";" + std::to_string(upper) + "]... Result: " + result);
+			} else {
+				event.reply("Upper boundary cannot be less or equal to lower boundary!");
+			}
 		}
 	});
 
 	bot.on_ready([&bot](const dpp::ready_t& event) {
 		if (dpp::run_once<struct register_bot_commands>()) {
-			bot.guild_command_create(dpp::slashcommand("roll", "Rolling a random number between 1 and 100 or between specified boundaries", bot.me.id), GUILD_ID);
-			bot.guild_command_create(dpp::slashcommand("dice", "Rolling a random number between 1 and 100 or between specified boundaries", bot.me.id), GUILD_ID);
+			dpp::slashcommand roll_cmd("roll", "Roll a random number between 1 and 100 or between specified boundaries", bot.me.id);
+			roll_cmd.add_option(dpp::command_option(dpp::co_integer, "lower", "Lower boundary", false));
+			roll_cmd.add_option(dpp::command_option(dpp::co_integer, "upper", "Upper boundary", false));
+			bot.guild_command_create(roll_cmd, GUILD_ID);
 		}
 	});
 
 	bot.start(false);
-}
-
-int cmd_roll() {
-	return cmd_roll(0, 100);
 }
 
 int cmd_roll(int a, int b) {
