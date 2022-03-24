@@ -74,13 +74,12 @@ int main()
 			event.reply("Connected to the voice channel, started recording: \"" + name + "\"");
 
 			auto timer = new dpp::timer();
-			*timer = bot.start_timer([&bot, &timer, &event, &f, &MODE_RECORD](){
+			*timer = bot.start_timer([&bot, timer, event, &f, &MODE_RECORD](){
 				MODE_RECORD = false;
 				fclose(f);
 				event.from->disconnect_voice(event.command.guild_id);
 				event.reply("Disconnected from a voice channel");
 				bot.stop_timer(*timer);
-				delete timer;
 			}, duration);
 		}
 
