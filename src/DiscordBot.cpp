@@ -15,7 +15,13 @@ int main()
 		return 0;
 	}
 
-	FILE* f;
+	FILE* f; // File ptr to use with "/record" command
+
+	// Variables to hold .pcm files and voice_client ("/stream" command)
+	uint8_t* source = nullptr;
+	size_t source_size = 0;
+	dpp::discord_voice_client* voice_client = nullptr;
+
 	dpp::snowflake user_id;
 	bool MODE_RECORD;
 
@@ -24,7 +30,7 @@ int main()
 
 
 
-	bot.on_interaction_create([&bot, &f, &user_id, &MODE_RECORD](const dpp::interaction_create_t& event) {
+	bot.on_interaction_create([&bot, &f, &user_id, &MODE_RECORD, &source, &source_size, &voice_client](const dpp::interaction_create_t& event) {
 		std::string cmd = event.command.get_command_name();
 		
 		if (cmd == "roll") {
@@ -94,7 +100,7 @@ int main()
 			MODE_RECORD = false;
 			user_id = event.command.usr.id;
 			std::string name = "recording";		// default recording filename
-			dpp::snowflake author;
+			dpp::snowflake author = 0;
 			if (std::holds_alternative<std::string>(event.get_parameter("name"))) {
 				name = std::get<std::string>(event.get_parameter("name"));
 			}
@@ -102,33 +108,54 @@ int main()
 				author = std::get<dpp::snowflake>(event.get_parameter("author"));
 			}
 
-			if (std::filesystem::exists("saved_vc/" + std::to_string(author) + "/" + name + ".pcm")) {
-				std::string fullpath = "./saved_vc/" + std::to_string(author) + "/" + name + ".pcm";
+			std::string path = "saved_vc/" + std::to_string(author) + "/" + name + ".pcm";
+
+			if (std::filesystem::exists(path)) {
+				source = nullptr;
+				source_size = 0;
+				std::ifstream input(path, std::ios::in | std::ios::binary | std::ios::ate);
+				std::cout << input.is_open();
+				if (input.is_open()) {
+					source_size = input.tellg();
+					source = new uint8_t[source_size];
+					input.seekg(0, std::ios::beg);
+					input.read((char*)source, source_size);
+					input.close();
+				}
+
 				dpp::guild* g = dpp::find_guild(event.command.guild_id);
 				if (!g->connect_member_voice(user_id, false, true)) {
 					bot.message_create(dpp::message(event.command.channel_id, "User must be on a voice channel"));
 					return;
 				}
-				dpp::voiceconn* v = event.from->get_voice(event.command.guild_id);
-				v->connect(event.command.guild_id);
-				if (v && v->voiceclient && v->voiceclient->is_ready()) {
-					uint8_t* source = nullptr;
-					size_t source_size = 0;
-					std::cout << fullpath;
-					std::ifstream input(fullpath, std::ios::in | std::ios::binary | std::ios::ate);
-					std::cout << input.is_open();
-					if (input.is_open()) {
-						source_size = input.tellg();
-						source = new uint8_t[source_size];
-						input.seekg(0, std::ios::beg);
-						input.read((char*)source, source_size);
-						input.close();
+
+				auto timer = new dpp::timer();
+				*timer = bot.start_timer([&bot, timer, event, &voice_client](){
+					if (voice_client != nullptr) {
+						if (voice_client->get_secs_remaining() == 0) {
+							event.from->disconnect_voice(voice_client->server_id);
+							bot.stop_timer(*timer);
+						}
 					}
-					v->voiceclient->send_audio_raw((uint16_t*)source, source_size);
-					event.from->disconnect_voice(event.command.guild_id);
-				}
+				}, 3); // Timer frequency - seconds
+
 			} else {
 				event.reply("Specified voice recording from specified author does not exist");
+			}
+		}
+	});
+
+	bot.on_voice_server_update([&bot, &MODE_RECORD](const dpp::voice_server_update_t& event) {
+		if (!MODE_RECORD) {
+			dpp::voiceconn* v = event.from->get_voice(event.guild_id);
+		}
+	});
+
+	bot.on_voice_ready([&bot, &MODE_RECORD, &source, &source_size, &voice_client](const dpp::voice_ready_t& event) {
+		if (!MODE_RECORD) {
+			if (event.voice_client && event.voice_client->is_ready()) {
+				voice_client = event.voice_client;
+				event.voice_client->send_audio_raw((uint16_t*)source, source_size);
 			}
 		}
 	});
